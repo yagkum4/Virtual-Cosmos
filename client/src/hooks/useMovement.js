@@ -10,9 +10,25 @@ export default function useMovement(socket) {
   const sitting = useRef(false);
 
   useEffect(() => {
-    const down = e => keys.current[e.key.toLowerCase()] = true;
-    const up = e => {
+    const isTyping = () => {
+      const active = document.activeElement;
+      return (
+        active &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          active.isContentEditable)
+      );
+    };
+
+    const down = (e) => {
+      if (isTyping()) return; // 🚀 FIX
+      keys.current[e.key.toLowerCase()] = true;
+    };
+
+    const up = (e) => {
+      if (isTyping()) return; // 🚀 FIX
       keys.current[e.key.toLowerCase()] = false;
+
       if (e.key.toLowerCase() === "x") sitting.current = false;
     };
 
@@ -43,8 +59,7 @@ export default function useMovement(socket) {
         pos.current = { x: nx, y: ny };
       }
 
-      // 🚪 Doors
-      doors.forEach(d => {
+      doors.forEach((d) => {
         if (
           pos.current.x >= d.from.x &&
           pos.current.x <= d.from.x + d.from.w &&
@@ -55,9 +70,8 @@ export default function useMovement(socket) {
         }
       });
 
-      // 🪑 Chairs
       if (keys.current["x"]) {
-        chairs.forEach(c => {
+        chairs.forEach((c) => {
           if (
             Math.abs(pos.current.x - c.x) < 20 &&
             Math.abs(pos.current.y - c.y) < 20
@@ -71,6 +85,10 @@ export default function useMovement(socket) {
       socket.emit("move", pos.current);
     }, 16);
 
-    return () => clearInterval(loop);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      clearInterval(loop);
+    };
   }, [socket]);
 }
